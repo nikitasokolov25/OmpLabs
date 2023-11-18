@@ -1,0 +1,56 @@
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+int main()
+{
+	const double EPS = 1E-9;
+	int n, m;
+	int x;
+	int countThreads;
+	// Код для считывания количества потоков входным параметром
+	/*std::cout << "Number of threads: ";
+	std::cin >> countThreads;
+	#pragma serial
+	{
+		omp_set_num_threads(countThreads);
+	}*/
+	std::cout << "Number of rows and columns in matrix: ";
+	std::cin >> n >> m;
+	std::vector<std::vector<int>> a;
+	std::cout << "Matrix values:\n";
+	for (int i = 0; i < n; i++)
+	{
+		std::vector<int> row;
+		for (int j = 0; j < m; j++)
+		{
+			std::cin >> x;
+			row.push_back(x);
+		}
+		a.push_back(row);
+	}
+
+	int rank = std::max(n, m);
+	std::vector<char> line_used(n);
+	#pragma omp parallel for
+	for (int i = 0; i < m; ++i) {
+		int j;
+		for (j = 0; j < n; ++j)
+			if (!line_used[j] && abs(a[j][i]) > EPS)
+				break;
+		if (j == n)
+			--rank;
+		else {
+			line_used[j] = true;
+			#pragma omp parallel for
+			for (int p = i + 1; p < m; ++p)
+				a[j][p] /= a[j][i];
+			#pragma omp parallel for
+			for (int k = 0; k < n; ++k)
+				if (k != j && abs(a[k][i]) > EPS)
+					for (int p = i + 1; p < m; ++p)
+						a[k][p] -= a[j][p] * a[k][i];
+		}
+	}
+	std::cout << "The rank is " << rank << "\n";
+}
